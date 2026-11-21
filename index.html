@@ -722,25 +722,24 @@
 				const titleEnc = encodeURIComponent(item.title);
 				const usersArr = Array.isArray(item.users) ? item.users : [];
 				const usersStr = usersArr.join(', ');
+				const reviewUrl = `https://pl.wikipedia.org/w/index.php?title=${titleEnc}&oldid=${encodeURIComponent(item.oldid ?? '')}&diff=${encodeURIComponent(item.revid ?? '')}`;
 
 				tr.innerHTML = `
-					<td><a href="https://pl.wikipedia.org/wiki/${titleEnc}" target="_blank">${escapeHtml(item.title)}</a> 
-						(<a href="https://pl.wikipedia.org/w/index.php?title=${titleEnc}&action=history" target="_blank">hist.</a>)</td>
-					<td>${item.oldest}</td>
-					<td>${item.edits}</td>
+					<td><a href="https://pl.wikipedia.org/wiki/${titleEnc}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a> 
+						(<a href="https://pl.wikipedia.org/w/index.php?title=${titleEnc}&action=history" target="_blank" rel="noopener noreferrer">hist.</a>)</td>
+					<td>${escapeHtml(item.oldest)}</td>
+					<td>${escapeHtml(item.edits)}</td>
 					<td>${escapeHtml(usersStr)}</td>
-					<td>${item.diff}</td>
+					<td>${escapeHtml(item.diff)}</td>
 					<td>${formatByteDiff(item.byte_diff)}</td>
-					<td>${item.links}</td>
-					<td><a href="${reviewUrl}" target="_blank" class="review-btn review-btn-compact">Otwórz diff w nowej karcie</a></td>
+					<td>${escapeHtml(item.links)}</td>
+					<td><a href="${reviewUrl}" target="_blank" rel="noopener noreferrer" class="review-btn review-btn-compact">Otwórz diff w nowej karcie</a></td>
 				`;
 				tbody.appendChild(tr);
 
 				if (item.diff_html) {
 					const diffTr = document.createElement('tr');
 					diffTr.className = `diff-row ${showDiff ? 'open' : ''}`;
-
-					const reviewUrl = `https://pl.wikipedia.org/w/index.php?title=${titleEnc}&oldid=${item.oldid}&diff=${item.revid}`;
 
 					diffTr.innerHTML = `
 						<td colspan="8">
