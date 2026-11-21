@@ -374,15 +374,15 @@
 	</div>
 
 	<div class="filter-panel">
-		<!--<div class="filter-group">
+		<div class="filter-group">
 			<label class="group-title">Porównanie wersji (diff) między wersją przejrzaną i ostatnią</label>
 			<div class="radio-group-inline">
 				<label class="checkbox-label">
 					<input type="checkbox" id="showDiffFilter">
-					Pokazuj
+					<s>Pokazuj</s> diffy zostały na razie wyłączone.
 				</label>
 			</div>
-		</div>-->
+		</div>
 
 		<div class="filter-group">
 			<label class="group-title">Liczba oczekujących edycji</label>
@@ -451,19 +451,16 @@
 		<button id="nextBtn">Następna →</button>
 	</div>
 
-	<script>
+<script>
 		let rawData = [];
 		let filteredData = [];
 		let currentPage = 1;
 		const PAGE_SIZE = 500;
 
-		let sortColumn = null;
+		let sortColumn = 'diff';
 		let sortDirection = 'asc';
 
 		const IP_OR_TEMP_KEY = '__IP_AND_TEMP__';
-
-		let sortColumn = 'diff';
-		let sortDirection = 'asc';
 
 		async function init() {
 			initTheme();
@@ -476,12 +473,12 @@
 
 				populateUsers();
 				attachEventListeners();
-					if (sortColumn) {
-						const initialTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
-						if (initialTh) {
-							initialTh.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
-						}
+				if (sortColumn) {
+					const initialTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
+					if (initialTh) {
+						initialTh.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
 					}
+				}
 				applyFilters();
 			} catch (e) {
 				document.getElementById('loading').textContent = 'Błąd wczytywania danych JSON.';
