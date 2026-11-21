@@ -365,7 +365,7 @@
 <body>
 
 	<div class="header-container">
-		<h1>Strony oczekujące na przejrzenie na polskiej Wikipedii (pierwsze 1900 stron; 21 listopada 2026, 12:15)</h1>
+		<h1>Strony oczekujące na przejrzenie na polskiej Wikipedii (stan na dzień 21 listopada 2026)</h1>
 		<button id="themeToggleBtn" class="theme-toggle-btn">Tryb ciemny 🌙</button>
 	</div>
 
@@ -374,7 +374,7 @@
 	</div>
 
 	<div class="filter-panel">
-		<div class="filter-group">
+		<!--<div class="filter-group">
 			<label class="group-title">Porównanie wersji (diff) między wersją przejrzaną i ostatnią</label>
 			<div class="radio-group-inline">
 				<label class="checkbox-label">
@@ -382,7 +382,7 @@
 					Pokazuj
 				</label>
 			</div>
-		</div>
+		</div>-->
 
 		<div class="filter-group">
 			<label class="group-title">Liczba oczekujących edycji</label>
@@ -455,12 +455,15 @@
 		let rawData = [];
 		let filteredData = [];
 		let currentPage = 1;
-		const PAGE_SIZE = 50;
+		const PAGE_SIZE = 500;
 
 		let sortColumn = null;
 		let sortDirection = 'asc';
 
 		const IP_OR_TEMP_KEY = '__IP_AND_TEMP__';
+
+		let sortColumn = 'diff';
+		let sortDirection = 'asc';
 
 		async function init() {
 			initTheme();
@@ -473,6 +476,12 @@
 
 				populateUsers();
 				attachEventListeners();
+					if (sortColumn) {
+						const initialTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
+						if (initialTh) {
+							initialTh.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+						}
+					}
 				applyFilters();
 			} catch (e) {
 				document.getElementById('loading').textContent = 'Błąd wczytywania danych JSON.';
@@ -650,29 +659,44 @@
 			renderTable();
 		}
 
+		function getComparableValue(item, col) {
+			if (col === 'users') {
+				return Array.isArray(item.users) ? item.users.join(', ') : '';
+			}
+			if (col === 'byte_diff') {
+				return typeof item.byte_diff === 'number' && !Number.isNaN(item.byte_diff)
+					? item.byte_diff
+					: -Infinity;
+			}
+			return item[col];
+		}
+
+		function compareValues(valA, valB) {
+			if (typeof valA === 'number' && typeof valB === 'number') {
+				return valA - valB;
+			}
+			return String(valA || '').localeCompare(String(valB || ''), 'pl');
+		}
+
 		function sortData() {
 			if (!sortColumn) return;
 
 			filteredData.sort((a, b) => {
-				let valA = a[sortColumn];
-				let valB = b[sortColumn];
+				const valA = getComparableValue(a, sortColumn);
+				const valB = getComparableValue(b, sortColumn);
+				let comparison = compareValues(valA, valB);
 
-				if (sortColumn === 'users') {
-					valA = Array.isArray(a.users) ? a.users.join(', ') : '';
-					valB = Array.isArray(b.users) ? b.users.join(', ') : '';
-				} else if (sortColumn === 'byte_diff') {
-					valA = typeof valA === 'number' ? valA : -Infinity;
-					valB = typeof valB === 'number' ? valB : -Infinity;
+				if (sortDirection === 'desc') {
+					comparison = -comparison;
 				}
 
-				let comparison = 0;
-				if (typeof valA === 'number' && typeof valB === 'number') {
-					comparison = valA - valB;
-				} else {
-					comparison = String(valA || '').localeCompare(String(valB || ''), 'pl');
+				if (comparison === 0 && sortColumn === 'diff') {
+					const byteA = getComparableValue(a, 'byte_diff');
+					const byteB = getComparableValue(b, 'byte_diff');
+					comparison = compareValues(byteA, byteB);
 				}
 
-				return sortDirection === 'asc' ? comparison : -comparison;
+				return comparison;
 			});
 		}
 
