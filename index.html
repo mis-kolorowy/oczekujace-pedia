@@ -237,14 +237,13 @@
 			display: flex;
 			gap: 15px;
 			align-items: flex-start;
-			justify-content: space-between;
 		}
 
 		.diff-container {
 			padding: 10px;
 			background: var(--diff-context-bg);
 			overflow-x: auto;
-			flex: 1 1 auto;
+			flex-grow: 1;
 			min-width: 0;
 		}
 
@@ -255,6 +254,7 @@
 			align-items: center;
 			padding: 10px;
 			min-width: 180px;
+			flex-shrink: 0;
 		}
 
 		.review-btn {
