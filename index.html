@@ -224,6 +224,23 @@
 		a:hover { text-decoration: underline; }
 		#loading { font-size: 16px; color: var(--link-color); font-weight: bold; margin: 20px 0; }
 
+		th.no-sort {
+			cursor: default;
+		}
+		th.no-sort:hover {
+			opacity: 1;
+		}
+		th.no-sort::after {
+			content: none;
+		}
+
+		.review-btn-compact {
+			padding: 6px 10px;
+			font-size: 12px;
+			border-radius: 4px;
+			white-space: nowrap;
+		}
+
 		/* --- STYLE DLA TABELI DIFFA --- */
 		.diff-row {
 			display: none;
@@ -421,6 +438,7 @@
 					<th data-sort="diff">Liczba zmodyfikowanych wierszy</th>
 					<th data-sort="byte_diff">Różnica w bajtach</th>
 					<th data-sort="links">Liczba linkujących z głównej przestrzeni</th>
+					<th class="no-sort">Diff</th>
 				</tr>
 			</thead>
 			<tbody id="tableBody"></tbody>
@@ -714,6 +732,7 @@
 					<td>${item.diff}</td>
 					<td>${formatByteDiff(item.byte_diff)}</td>
 					<td>${item.links}</td>
+					<td><a href="${reviewUrl}" target="_blank" class="review-btn review-btn-compact">Otwórz diff w nowej karcie</a></td>
 				`;
 				tbody.appendChild(tr);
 
@@ -724,18 +743,11 @@
 					const reviewUrl = `https://pl.wikipedia.org/w/index.php?title=${titleEnc}&oldid=${item.oldid}&diff=${item.revid}`;
 
 					diffTr.innerHTML = `
-						<td colspan="7">
-							<div class="diff-flex-wrapper">
-								<div class="diff-container">
-									<table class="diff">
-										${item.diff_html}
-									</table>
-								</div>
-								<div class="review-action-container">
-									<a href="${reviewUrl}" target="_blank" class="review-btn">
-										Otwórz diff w nowej karcie
-									</a>
-								</div>
+						<td colspan="8">
+							<div class="diff-container">
+								<table class="diff">
+									${item.diff_html}
+								</table>
 							</div>
 						</td>
 					`;
