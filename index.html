@@ -165,105 +165,6 @@
 			word-break: break-word;
 		}
 
-		/* --- RANKING TOP 40 JEDYNYCH AUTORÓW --- */
-		.solo-panel {
-			background: var(--panel-bg);
-			border: 1px solid var(--border-color);
-			border-radius: 4px;
-			padding: 12px 15px;
-			margin-bottom: 15px;
-		}
-
-		.solo-panel summary {
-			cursor: pointer;
-			font-weight: bold;
-			font-size: 13px;
-			user-select: none;
-			list-style: none;
-			display: flex;
-			align-items: center;
-			gap: 8px;
-		}
-
-		.solo-panel summary::-webkit-details-marker {
-			display: none;
-		}
-
-		.solo-panel summary::before {
-			content: '▶';
-			font-size: 10px;
-			transition: transform 0.15s;
-		}
-
-		.solo-panel[open] summary::before {
-			transform: rotate(90deg);
-		}
-
-		.solo-desc {
-			font-size: 12px;
-			color: var(--muted-color);
-			margin: 8px 0 10px 0;
-		}
-
-		.solo-grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-			gap: 6px 12px;
-		}
-
-		.solo-item {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			gap: 8px;
-			padding: 5px 8px;
-			background: var(--grid-bg);
-			border: 1px solid var(--grid-border);
-			border-radius: 3px;
-			font-size: 12px;
-		}
-
-		.solo-left {
-			display: flex;
-			align-items: center;
-			gap: 6px;
-			min-width: 0;
-		}
-
-		.solo-rank {
-			color: var(--muted-color);
-			font-variant-numeric: tabular-nums;
-			flex-shrink: 0;
-		}
-
-		.solo-user-btn {
-			background: none;
-			border: none;
-			padding: 0;
-			color: var(--link-color);
-			font-size: 12px;
-			font-weight: 600;
-			text-align: left;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
-		.solo-user-btn:hover {
-			text-decoration: underline;
-		}
-
-		.solo-count {
-			background: var(--badge-bg);
-			color: var(--badge-text);
-			font-weight: bold;
-			font-size: 11px;
-			padding: 2px 6px;
-			border-radius: 10px;
-			font-variant-numeric: tabular-nums;
-			flex-shrink: 0;
-		}
-
 		.table-toolbar {
 			display: flex;
 			justify-content: space-between;
@@ -527,7 +428,7 @@
 
 			<div class="section-subheader">
 				<label class="group-title">Wybierz edytora</label>
-				<p class="section-hint">Liczba w nawiasie oznacza, przy ilu stronach pojawia się dany login.</p>
+				<p class="section-hint">Liczba w nawiasie oznacza, przy ilu hasłach dany login pojawia się jako jedyny autor.</p>
 				<div class="user-controls-row">
 					<button type="button" class="btn-sm" id="toggleAllUsersBtn">Zaznacz/Odznacz wszystko</button>
 					<div class="radio-group-inline">
@@ -543,14 +444,6 @@
 			<div class="selection-grid" id="usersContainer"></div>
 		</div>
 	</div>
-
-	<details class="solo-panel" id="soloEditorsPanel">
-		<summary>Top 40 edytorów pojawiających się jako jedyny autor przy haśle</summary>
-		<p class="solo-desc">
-			Zestawienie malejące loginów, które przy danym haśle figurują jako jedyny edytor. Kliknięcie loginu filtruje tabelę do jego haseł (w trybie „Tylko wybrani edytorzy”).
-		</p>
-		<div class="solo-grid" id="soloEditorsGrid"></div>
-	</details>
 
 	<div id="loading">Wczytywanie bazy danych...</div>
 
@@ -594,7 +487,8 @@
 		let sortColumn = 'diff';
 		let sortDirection = 'asc';
 
-		let userPageCounts = {};
+		// Liczniki haseł, przy których login występuje jako jedyny autor: key = lowercaseUsername
+		let soloUserEntries = []; // [{ lower, displayName, soloCount }]
 		let ipPageCount = 0;
 
 		const IP_OR_TEMP_KEY = '__IP_AND_TEMP__';
@@ -610,7 +504,6 @@
 
 				computeUserCounts();
 				populateUsers();
-				populateSoloEditors();
 				attachEventListeners();
 				if (sortColumn) {
 					const initialTh = document.querySelector(`th[data-sort="${sortColumn}"]`);
@@ -655,27 +548,37 @@
 		}
 
 		function computeUserCounts() {
-			userPageCounts = {};
+			const soloMap = new Map(); // lower -> { displayName, soloCount }
 			ipPageCount = 0;
 
 			rawData.forEach(item => {
-				if (Array.isArray(item.users)) {
-					const uniqueUsersInItem = new Set(item.users);
-					let itemHasIpOrTemp = false;
+				if (!Array.isArray(item.users) || item.users.length === 0) return;
 
-					uniqueUsersInItem.forEach(u => {
-						if (isIpOrTempAccount(u)) {
-							itemHasIpOrTemp = true;
-						} else {
-							userPageCounts[u] = (userPageCounts[u] || 0) + 1;
-						}
-					});
+				const cleanedUsers = item.users.map(u => String(u || '').trim()).filter(Boolean);
+				if (cleanedUsers.length === 0) return;
 
-					if (itemHasIpOrTemp) {
-						ipPageCount++;
+				const hasIpOrTemp = cleanedUsers.some(u => isIpOrTempAccount(u));
+				if (hasIpOrTemp) {
+					ipPageCount++;
+				}
+
+				const uniqueLower = new Set(cleanedUsers.map(u => u.toLowerCase()));
+				if (uniqueLower.size === 1) {
+					const [onlyLower] = uniqueLower;
+					const displayName = cleanedUsers.find(u => u.toLowerCase() === onlyLower) || onlyLower;
+					if (!isIpOrTempAccount(displayName)) {
+						const current = soloMap.get(onlyLower) || { displayName, soloCount: 0 };
+						current.soloCount += 1;
+						soloMap.set(onlyLower, current);
 					}
 				}
 			});
+
+			soloUserEntries = Array.from(soloMap.entries()).map(([lower, info]) => ({
+				lower,
+				displayName: info.displayName,
+				soloCount: info.soloCount
+			}));
 		}
 
 		function populateUsers() {
@@ -687,12 +590,12 @@
 			const sortOrderEl = document.querySelector('input[name="userSortOrder"]:checked');
 			const sortOrder = sortOrderEl ? sortOrderEl.value : 'alpha';
 
-			const sortedUsers = Object.keys(userPageCounts).sort((a, b) => {
+			const sortedUsers = [...soloUserEntries].sort((a, b) => {
 				if (sortOrder === 'count_desc') {
-					const diff = (userPageCounts[b] || 0) - (userPageCounts[a] || 0);
+					const diff = b.soloCount - a.soloCount;
 					if (diff !== 0) return diff;
 				}
-				return a.localeCompare(b, 'pl');
+				return a.displayName.localeCompare(b.displayName, 'pl');
 			});
 
 			let html = '';
@@ -707,79 +610,17 @@
 				`;
 			}
 
-			sortedUsers.forEach(u => {
-				const val = u.toLowerCase();
-				const checkedAttr = currentlyChecked.has(val) ? 'checked' : '';
+			sortedUsers.forEach(entry => {
+				const checkedAttr = currentlyChecked.has(entry.lower) ? 'checked' : '';
 				html += `
 					<label class="checkbox-label">
-						<input type="checkbox" name="userSelect" value="${escapeHtml(val)}" ${checkedAttr}>
-						${escapeHtml(u)} (${userPageCounts[u]})
+						<input type="checkbox" name="userSelect" value="${escapeHtml(entry.lower)}" ${checkedAttr}>
+						${escapeHtml(entry.displayName)} (${entry.soloCount})
 					</label>
 				`;
 			});
 
 			container.innerHTML = html;
-		}
-
-		function populateSoloEditors() {
-			const grid = document.getElementById('soloEditorsGrid');
-			if (!grid) return;
-
-			// Mapowanie: lowercaseUser -> { displayName, count }
-			const soloMap = new Map();
-
-			rawData.forEach(item => {
-				if (!Array.isArray(item.users) || item.users.length === 0) return;
-
-				const uniqueLower = new Set(item.users.map(u => String(u || '').trim().toLowerCase()).filter(Boolean));
-				if (uniqueLower.size === 1) {
-					const [onlyLower] = uniqueLower;
-					const displayName = String(item.users.find(u => String(u || '').trim().toLowerCase() === onlyLower) || onlyLower).trim();
-					if (isIpOrTempAccount(displayName)) return;
-
-					const current = soloMap.get(onlyLower) || { displayName, count: 0 };
-					current.count += 1;
-					soloMap.set(onlyLower, current);
-				}
-			});
-
-			const top40 = Array.from(soloMap.entries())
-				.sort((a, b) => {
-					const diff = b[1].count - a[1].count;
-					if (diff !== 0) return diff;
-					return a[1].displayName.localeCompare(b[1].displayName, 'pl');
-				})
-				.slice(0, 40);
-
-			if (top40.length === 0) {
-				grid.innerHTML = '<div class="section-hint">Brak haseł z pojedynczym edytorem.</div>';
-				return;
-			}
-
-			grid.innerHTML = top40.map(([lowerVal, info], idx) => `
-				<div class="solo-item">
-					<div class="solo-left">
-						<span class="solo-rank">${idx + 1}.</span>
-						<button type="button" class="solo-user-btn" data-user-val="${escapeHtml(lowerVal)}" title="Filtruj do haseł tego edytora">
-							${escapeHtml(info.displayName)}
-						</button>
-					</div>
-					<span class="solo-count">${info.count}</span>
-				</div>
-			`).join('');
-		}
-
-		function selectSingleSoloEditor(lowerUserVal) {
-			const onlyRadio = document.querySelector('input[name="userMode"][value="only"]');
-			if (onlyRadio) onlyRadio.checked = true;
-
-			const allCheckboxes = Array.from(document.querySelectorAll('input[name="userSelect"]'));
-			allCheckboxes.forEach(cb => {
-				cb.checked = (cb.value === lowerUserVal);
-			});
-
-			applyFilters();
-			document.querySelector('.table-toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 		}
 
 		function toggleAllCheckboxes(selector) {
@@ -805,14 +646,6 @@
 					} else {
 						applyFilters();
 					}
-				}
-			});
-
-			document.getElementById('soloEditorsGrid').addEventListener('click', (e) => {
-				const btn = e.target.closest('.solo-user-btn');
-				if (btn) {
-					const val = btn.getAttribute('data-user-val');
-					if (val) selectSingleSoloEditor(val);
 				}
 			});
 
